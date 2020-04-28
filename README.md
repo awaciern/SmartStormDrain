@@ -10,6 +10,10 @@ The key files in this folder are located in the **lib** folder. Here you will fi
 
 The embedded code used for microcontroller and sensor operation in this project can be found under EmbeddedCode/Final Embedded Design/ Code. Embedded_Sensor_Ops_Code.py is the primary file that contains all sensor initializations and functions relating to interfacing and using the (2) JSN-SR04T ultrasonic distance sensors and the (1) Sparkfun Sound Detector. This file is accompanied by the tsl2591.py interface file, which enables the functionality of the (1) TSL2591 ambient light sensor. These files provide the ability to collect data for the system, but do not transmit any data. In order to transmit data, bring the functions and initializations from these files into the LoPy_Ring / LoPy_No_Ring code and integrate the sensing functions to fit the implementation of making the payload.
 
+## HardwareFiles
+
+A collection of some useful hardware files created for designing the Smart Storm Drain device. The README file in this folder gives more detail on the specific hardware files.
+
 ## WebApp
 
 The web application was built using the Django Python web framework and was hosted via Microsoft Azure Cloud Hosting services. The README file in this folder gives more detail on the code in this folder. Note that this code is copied from another public GitHub repository that connects to the Microsoft Azure web application deployment, which is available at the following link: https://github.com/awaciern/smart-storm-drain.
