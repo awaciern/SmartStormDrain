@@ -1,0 +1,5 @@
+django==2.1
+whitenoise
+pyodbc
+django-pyodbc-azure
+requests

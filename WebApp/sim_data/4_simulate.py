@@ -1,0 +1,52 @@
+from datetime import datetime, timedelta
+from random import random
+from webapp.models import Device, Transmission
+
+
+'''
+To run this script, open the server shell and run the following command:
+exec(open('sim_data/3_simulate.py').read())
+NOTE: The simulated data will be associated with the device specified by pk
+'''
+
+# Device we are assigining this data to
+device = Device.objects.get(pk=4)
+
+# Starting date for simulated data
+date = datetime(2020, 4, 13, 0, 0)
+depth = 0.0
+flowrate = 1
+voltage = 3.80
+
+# Loop until specified date
+while date < datetime(2020, 4, 18):
+    print('{0} - flowrate = {1}, depth = {2}, voltage={3}'
+          .format(date, flowrate, depth, voltage))
+
+    # Store the transmission in the database
+    Transmission.objects.create(timestamp=date, device=device, depth=depth,
+                                flowrate=flowrate, voltage=voltage)
+
+    # Transission interval increment
+    date = date + timedelta(minutes=60)
+
+    # Decrease battery linearly
+    voltage -= 0.001
+
+    # Generate random event for the weather
+    rand = random()
+
+    # 0.03 chance it starts raining
+    if flowrate == 1 and rand > 0.97:
+            flowrate = 2
+
+    # 0.3 chance it stops raining if it is raining
+    if flowrate == 2 and rand < 0.3:
+        flowrate = 1
+
+    # How water depth changes based on the flow rate (floods at 6 ft [72 inches])
+    if depth < 72:
+        if flowrate == 1 and depth > 0.1:
+            depth -= 0.4
+        if flowrate == 2:
+            depth += 3.0

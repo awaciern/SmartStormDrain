@@ -1,0 +1,412 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="{% static 'css/site.css' %}"/>
+    <script src="{% static 'js/moment.js' %}"></script>
+    <script src="{% static 'js/chart.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/jquery.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/daterangepicker.min.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/daterangepicker.css' %}"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+    integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+    crossorigin="">
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+    integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+    crossorigin=""></script>
+  </head>
+  <body>
+    <h1>Smart Storm Drain</h1>
+    <div class="col1">
+      <h2>Health Indicators</h2>
+      <table>
+        <tr>
+          <td>
+            <span class="dot{{ health.overall }}">
+          </td>
+          <td></td><td></td><td></td><td></td><td></td>
+          <td>
+            <h3>Overall System Health</h3>
+            <p>Number of Healthy Drains: {{ health.healthy }}</p>
+            <p>Number of Drains Collecting Water: {{ health.flowing }}</p>
+            <p>Number of Possibly Cogged Drians: {{ health.clogged }}</p>
+            <p>Number of Offline Drains: {{ health.offline }}</p>
+          </td>
+        </tr>
+        <tr></tr><tr></tr><tr></tr><tr></tr><tr></tr>
+        <tr>
+          <td>
+            <span class="dot{{ device_health }}">
+          </td>
+          <td></td><td></td><td></td><td></td><td></td>
+          <td>
+            <h3>Selected Device Health:</h3>
+            <p>{{ device }}</p>
+            {% if device_health == 0 %}
+              <p>Status: Healthy<p>
+            {% elif device_health == 1 %}
+              <p>Status: Collecting Water<p>
+            {% elif device_health == 2 %}
+              <p>Status: Possibly Clogged<p>
+            {% elif device_health == 3 %}
+              <p>Status: Offline (Previously Online)<p>
+            {% else %}
+              <p>Status: Offline (Never Online)<p>
+            {% endif %}
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div class="col2">
+      <h2>Map of Devices (<a href="admin/webapp/device/add/">Add a Device</a>)</h2>
+      <div id="mapid" class="leaflet-container leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag" tabindex="0"></div>
+    </div>
+    <div class="bottom">
+      {% block content %}
+      <table>
+        <tr>
+          <td>
+            <h2>Selected Device and Data to Display<h2>
+            <h3>Change the Device, Metric, or DateTime Range Selection</h3>
+            <form method="POST" class="post-form">{% csrf_token %}
+                {{ form1.as_p }}
+                {% if device_health != 4 %}
+                  <label>DateTime: </label>
+                  <input type="text" name="datetimes" size="32" label="DateTime"/>
+                  <br>
+                  <br>
+                {% endif %}
+                <button type="submit" name="btn1">Submit</button>
+            <!-- </form> -->
+          </td>
+          <td></td><td></td><td></td><td></td><td></td>
+          <td>
+            <h2>Device Controller for {{ device }}</h2>
+            <h3>Adjust the Transmission Rate or Turn the Device OFF</h3>
+            {% if authenticated %}
+              <!-- <form method="POST" class="post-form">{% csrf_token %} -->
+                {{ form2.as_p }}
+                <button type="submit" name="btn2" onclick="return confirm('WARNING: Are you sure you want to make the Device Controller changes specified? Powering a device OFF will cause the device to turn off PERMANENTLY and will require physical maintenance to turn back on.');">
+                  Submit
+                </button>
+              <!-- </form> -->
+            {% else %}
+              <i><h3>You are not authenticated as a Manager or Admin <br>
+                     and do not have access to the Device Controller</h3></i>
+            {% endif %}
+            </form>
+          <td>
+        </tr>
+      </table>
+      {% endblock %}
+      {% if device_health != 4 %}
+        <canvas id="myChart" height="85"></canvas>
+      {% else %}
+        <h2><i>{{ device }} has no transmission data to display!!!</i></h2>
+      {% endif %}
+    </div>
+  </body>
+</html>
+
+<!-- <script>
+  function myScript() {
+    alert('WARN');
+  }
+</script> -->
+
+<!--DateTimepicker JavaScript-->
+<script>
+  $(function() {
+    $('input[name="datetimes"]').daterangepicker({
+      timePicker: true,
+      minDate: new Date("{{ dates.min_day.isoformat }}"),
+      maxDate: new Date("{{ dates.max_day.isoformat }}"),
+      startDate: new Date("{{ dates.start_day.isoformat }}"),
+      endDate: new Date("{{ dates.end_day.isoformat }}"),
+      locale: {
+        format: 'M/DD/YY hh:mm A'
+      }
+    });
+  });
+</script>
+
+<!--Charts JavaScript-->
+{% if device_health != 4 %}
+<script type="text/javascript">
+  // Get the chart reference in the template
+  var ctx = document.getElementById('myChart');
+
+  // Use metric value to determine which chart to render
+  if ('{{ metric }}' == 'depth') {
+    // Line chart for water depth
+    var myLineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [{
+            backgroundColor: 'rgba(0,102,255,0.5)',
+            borderColor: 'rgba(0,102,255,0.5)',
+            data: [
+              {% for transmission in transmissions %}
+              {
+                x: new Date("{{ transmission.timestamp.isoformat }}"),
+                y: {{ transmission.depth }}
+              },
+              {% endfor %}
+            ]
+          }]
+        },
+        options: {
+          // responsive: true,
+          // maintainAspectRatio: false,
+          legend: {
+            display: false
+          },
+          title: {
+            display: true,
+            text: 'Water Depth of {{ device.name }}',
+            fontSize: 30
+          },
+          scales: {
+            xAxes: [{
+              type: 'time',
+              scaleLabel: {
+                display: true,
+                labelString: 'Datetime',
+                fontSize: 20
+              }
+            }],
+            yAxes: [{
+              scaleLabel: {
+                display: true,
+                labelString: 'Depth (in)',
+                fontSize: 20
+              }
+            }],
+          }
+        }
+    });
+  }
+
+  // Assigns proper point colors based on the flowrate
+  var pointBackgroundColors = [
+    {% for transmission in transmissions %}
+      {% if transmission.flowrate == 1 %}
+        'rgba(0,204,0,0.5)',
+      {% elif transmission.flowrate == 2 %}
+        'rgba(255,204,0,0.5)',
+      {% elif transmission.flowrate == -1 %}
+        'rgba(255,0,0,0.5)',
+      {% else %}
+        'rgba(128,128,128,0.5)',
+      {% endif %}
+    {% endfor %}
+  ];
+  var pointBorderColors = [
+    {% for transmission in transmissions %}
+      {% if transmission.flowrate == 1 %}
+        'rgba(0,204,0,1)',
+      {% elif transmission.flowrate == 2 %}
+        'rgba(255,204,0,1)',
+      {% elif transmission.flowrate == -1 %}
+        'rgba(255,0,0,1)',
+      {% else %}
+        'rgba(128,128,128,1)',
+      {% endif %}
+    {% endfor %}
+  ];
+
+  if ('{{ metric }}' == 'flowrate') {
+    // Bar chart for flow rate
+    var myBarChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          datasets: [{
+            backgroundColor: pointBackgroundColors,
+            borderColor: pointBorderColors,
+            borderWidth: 1,
+            data: [
+              {% for transmission in transmissions %}
+              {
+                x: new Date("{{ transmission.timestamp.isoformat }}"),
+                y: {{ transmission.flowrate }}
+              },
+              {% endfor %}
+            ],
+          }]
+        },
+        options: {
+          legend: {
+            display: false
+          },
+          title: {
+            display: true,
+            text: 'Flow Rate of {{ device.name }}',
+            fontSize: 30
+          },
+          scales: {
+            xAxes: [{
+              type: 'time',
+              scaleLabel: {
+                display: true,
+                labelString: 'Datetime',
+                fontSize: 20
+              }
+            }],
+            yAxes: [{
+              scaleLabel: {
+                display: true,
+                labelString: 'Flow Rate',
+                fontSize: 20
+              },
+              ticks: {
+                beginAtZero: false,
+                min: -1,
+                suggestedMax: 2,
+                callback: function(label) {
+                  switch(label) {
+                    case -1:
+                      return 'Possible Clog';
+                    case 1:
+                      return 'Normal';
+                    case 2:
+                      return 'High';
+                  }
+                }
+              }
+            }],
+          },
+        }
+    });
+  }
+
+  if ('{{ metric }}' == 'voltage') {
+    // Line chart for battery voltage
+    var myLineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [{
+            backgroundColor: 'rgba(0,204,0,0.5)',
+            borderColor: 'rgba(0,204,0,0.5)',
+            data: [
+              {% for transmission in transmissions %}
+              {
+                x: new Date("{{ transmission.timestamp.isoformat }}"),
+                y: {{ transmission.voltage }}
+              },
+              {% endfor %}
+            ]
+          }]
+        },
+        options: {
+          legend: {
+            display: false
+          },
+          title: {
+            display: true,
+            text: 'Battery Voltage of {{ device.name }}',
+            fontSize: 30
+          },
+          scales: {
+            xAxes: [{
+              type: 'time',
+              scaleLabel: {
+                display: true,
+                labelString: 'Datetime',
+                fontSize: 20
+              },
+            }],
+            yAxes: [{
+              scaleLabel: {
+                display: true,
+                labelString: 'Voltage (V)',
+                fontSize: 20
+              },
+              ticks: {
+                suggestedMin: 2.9
+              }
+            }],
+          }
+        }
+    });
+  }
+</script>
+{% endif %}
+
+<!--GeoMap JavaScript-->
+<script type="text/javascript">
+  // Creates the map
+  var mymap = L.map('mapid').setView([35.769313, -78.676823], 13);
+  L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+      attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+      maxZoom: 18,
+      id: 'mapbox/streets-v11',
+      tileSize: 512,
+      zoomOffset: -1,
+      accessToken: 'pk.eyJ1IjoiYXdhY2llcm4iLCJhIjoiY2s2bzN5ZWtyMTc2cjNvbDkycGNtM3c1ZiJ9.RTZ8Xi8cT8JRMJAKODZQ8w'
+  }).addTo(mymap);
+
+  // Create the different icon colors based on device health
+  var greenIcon = new L.Icon({
+    iconUrl: "{% static 'img/marker-icon-green.png' %}",
+    shadowUrl: "{% static 'img/marker-shadow.png' %}",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+  var orangeIcon = new L.Icon({
+    iconUrl: "{% static 'img/marker-icon-orange.png' %}",
+    shadowUrl: "{% static 'img/marker-shadow.png' %}",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+  var redIcon = new L.Icon({
+    iconUrl: "{% static 'img/marker-icon-red.png' %}",
+    shadowUrl: "{% static 'img/marker-shadow.png' %}",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+  var greyIcon = new L.Icon({
+    iconUrl: "{% static 'img/marker-icon-grey.png' %}",
+    shadowUrl: "{% static 'img/marker-shadow.png' %}",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+  var blackIcon = new L.Icon({
+    iconUrl: "{% static 'img/marker-icon-black.png' %}",
+    shadowUrl: "{% static 'img/marker-shadow.png' %}",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+
+  // Puts the device markers on the map with the proper health status
+  {% for key, value in locations.items %}
+    {% if value.health == 0 %}
+      L.marker([{{ value.latitude }}, {{ value.longitude }}], {icon: greenIcon}).addTo(mymap).bindPopup("<b>{{ key }}</b><br>Health: Healthy");
+    {% elif value.health == 1 %}
+      L.marker([{{ value.latitude }}, {{ value.longitude }}], {icon: orangeIcon}).addTo(mymap).bindPopup("<b>{{ key }}</b><br>Health: Collecting Water");
+    {% elif value.health == 2 %}
+      L.marker([{{ value.latitude }}, {{ value.longitude }}], {icon: redIcon}).addTo(mymap).bindPopup("<b>{{ key }}</b><br>Health: Possibly Clogged");
+    {% elif value.health == 3 %}
+      L.marker([{{ value.latitude }}, {{ value.longitude }}], {icon: greyIcon}).addTo(mymap).bindPopup("<b>{{ key }}</b><br>Health: Offline (Previously Online)");
+    {% else %}
+      L.marker([{{ value.latitude }}, {{ value.longitude }}], {icon: blackIcon}).addTo(mymap).bindPopup("<b>{{ key }}</b><br>Health: Offline (Never Online)");
+    {% endif %}
+  {% endfor %}
+
+  // Fits the frame of the map based on the data point locations
+  var group = new L.featureGroup([
+    {% for location in locations %}
+      L.marker([{{ location.latitude }}, {{ location.longitude }}]),
+    {% endfor %}
+  ]);
+  mymap.fitBounds(group.getBounds());
+</script>

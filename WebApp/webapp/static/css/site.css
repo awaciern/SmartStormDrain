@@ -1,0 +1,60 @@
+#mapid {
+  width: 600px;
+  height: 400px;
+  position: relative;
+}
+
+.dot0 {
+  height: 100px;
+  width: 100px;
+  background-color: #00cc00;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot1 {
+  height: 100px;
+  width: 100px;
+  background-color: #ffcc00;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot2 {
+  height: 100px;
+  width: 100px;
+  background-color: #ff0000;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot3 {
+  height: 100px;
+  width: 100px;
+  background-color: #808080;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot4 {
+  height: 100px;
+  width: 100px;
+  background-color: #000000;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.col1 {
+  float: left;
+  width: 35%;
+}
+
+.col2 {
+  float: right;
+  width: 65%;
+}
+
+.bottom {
+  clear: both;
+  margin-bottom: 0;
+}
